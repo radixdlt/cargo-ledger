@@ -16,7 +16,6 @@ use utils::*;
 
 #[derive(Debug, Deserialize)]
 struct NanosMetadata {
-    api_level: Option<String>,
     curve: Vec<String>,
     path: Vec<String>,
     flags: String,
@@ -199,8 +198,8 @@ fn build_app(
     // Find hex file path relative to 'app.json'
     let hex_file = hex_file_abs.strip_prefix(current_dir).unwrap();
 
-    // Retrieve real 'dataSize' from ELF
-    let data_size = retrieve_data_size(&exe_path).unwrap();
+    // Retrieve real data size and SDK infos from ELF
+    let infos = retrieve_infos(&exe_path).unwrap();
 
     // Modify flags to enable BLE if targeting Nano X
     let flags = match device {
@@ -233,15 +232,13 @@ fn build_app(
             "paths": this_metadata.path
         },
         "binary": hex_file,
-        "dataSize": data_size
+        "dataSize": infos.size
     });
     // Ignore apiLevel for Nano S as it is unsupported for now
     match device {
         Device::Nanos => (),
         _ => {
-            json["apiLevel"] = serde_json::Value::String(
-                this_metadata.api_level.expect("Missing field"),
-            )
+            json["apiLevel"] = infos.api_level.to_string().into();
         }
     }
     serde_json::to_writer_pretty(file, &json).unwrap();
